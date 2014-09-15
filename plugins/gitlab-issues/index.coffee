@@ -10,20 +10,28 @@ class GitLabIssue extends NotificationPlugin
       description: @markdownBody(event)
       # Regex removes surrounding whitespace around commas while retaining inner whitespace
       # and then creates an array of the strings
-      labels: (config?.labels || "bugsnag").trim().split(/\s*,\s*/).compact(true)
+      labels: (config?.labels || "bugsnag").trim().split(/\s*,\s*/).compact(true).join(",")
 
-    # Send the request
-    @request
-      .post("#{config.gitlab_url}/api/v3/projects/#{encodeURIComponent(config.project_id)}/issues")
+    baseUrl = "#{config.gitlab_url}/api/v3/projects/"
+
+    @request.get(baseUrl)
       .set("User-Agent", "Bugsnag")
       .set("PRIVATE-TOKEN", config.private_token)
-      .send(payload)
-      .on("error", callback)
-      .end (res) ->
-        return callback(res.error) if res.error
+      .end (res) =>
+        projectId = 0
+        res.body.map (project) ->
+          if project.name == encodeURIComponent(config.project_name)
+            projectId = project.id
 
-        callback null,
-          id: res.body.id
-          url: "#{config.gitlab_url}/#{config.project_id}/issues/#{res.body.id}"
+        @request.post(baseUrl + projectId + '/issues')
+          .send(payload)
+          .set("User-Agent", "Bugsnag")
+          .set("PRIVATE-TOKEN", config.private_token)
+          .on("error", callback)
+          .end (res) ->
+            return callback(res.error) if res.error
+            callback null,
+              id: res.body.id
+              url: "#{config.gitlab_url}/#{config.project_name}/issues/#{res.body.id}"
 
 module.exports = GitLabIssue
