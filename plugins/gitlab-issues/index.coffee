@@ -21,9 +21,7 @@ class GitLabIssue extends NotificationPlugin
     payload =
       title: @title(event)
       description: @markdownBody(event)
-      # Regex removes surrounding whitespace around commas while retaining inner whitespace
-      # and then creates an array of the strings
-      labels: (config?.labels || "bugsnag").trim().split(/\s*,\s*/).compact(true).join(",")
+      labels: (config?.labels || "bugsnag")
 
     @gitlabRequest(@request.post(@issuesUrl(config)), config)
       .send(payload)
